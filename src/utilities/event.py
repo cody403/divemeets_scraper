@@ -49,6 +49,13 @@ class EventResults:
             score_col = fullsize_cols[3]
             diff_col = fullsize_cols[4]
 
+            athlete_name = self._normalize_text(athlete_col)
+            score = self._normalize_text(score_col)
+
+            # Skip scratched or disqualified entries
+            if "Scratched" in athlete_name or "Disqualified" in score:
+                continue
+
             athlete_profile_url = row.xpath('.//a[contains(@href, "Profile")]/@href')
             dive_sheet_url = row.xpath('.//a[contains(@href, "DiveSheetResults")]/@href')
 
@@ -57,11 +64,11 @@ class EventResults:
                 "event_number": self.event_number,
                 "event_type": self.event_type,
                 "event_url": self.url,
-                "athlete_name": self._normalize_text(athlete_col),
+                "athlete_name": athlete_name,
                 "athlete_profile_url": self._abs_url(athlete_profile_url[0]) if athlete_profile_url else "",
                 "team": self._normalize_text(team_col),
                 "place": self._normalize_text(place_col),
-                "score": self._normalize_text(score_col),
+                "score": score,
                 "difference": self._normalize_text(diff_col),
                 "dive_sheet_url": self._abs_url(dive_sheet_url[0]) if dive_sheet_url else "",
             })

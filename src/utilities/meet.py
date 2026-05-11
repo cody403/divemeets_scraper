@@ -16,6 +16,27 @@ class MeetResults():
         self.url = f"{self.BASE_RESULTS_URL}{self.meet_number}"
         self.page_tree = get_html_tree_from_url(self.url)
 
+    def get_meet_name(self):
+        texts = [
+            t.strip() for t in self.page_tree.xpath('//div[contains(@class, "container-top")]//text()')
+            if t.strip()
+        ]
+        filtered = [
+            t for t in texts
+            if t not in {
+                "Meet Results",
+                "Event Results",
+                "Board Assignments",
+                "Official Scores",
+                "Events",
+                "Entries",
+                "Date",
+            }
+        ]
+        if filtered:
+            return filtered[0]
+        return f"Meet {self.meet_number}"
+
     def get_associated_events(self):
         events = []
         seen = set()

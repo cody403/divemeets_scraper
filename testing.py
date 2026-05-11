@@ -17,11 +17,15 @@ def parse_meet_numbers(user_input: str) -> list:
     return numbers
 
 
-def fetch_event_results(meet_number: str, event_number: str, event_type: str) -> list:
+def fetch_event_results(meet_number: str, event_number: str, event_type: str, event_name: str, meet_name: str) -> list:
     """Fetch results for a single event."""
     try:
         event = EventResults(meet_number, event_number, event_type)
-        return event.get_results()
+        results = event.get_results()
+        for result in results:
+            result['event_name'] = event_name
+            result['meet_name'] = meet_name
+        return results
     except Exception as e:
         print(f"Error fetching event {meet_number}/{event_number}/{event_type}: {e}")
         return []
@@ -44,8 +48,9 @@ def main():
         print(f"Fetching events for meet {meet_number}...")
         try:
             meet = MeetResults(meet_number)
+            meet_name = meet.get_meet_name()
             events = meet.get_associated_events()
-            print(f"Found {len(events)} events for meet {meet_number}")
+            print(f"Found {len(events)} events for meet {meet_number} ({meet_name})")
 
             if not events:
                 print(f"No events found for meet {meet_number}")
@@ -55,13 +60,15 @@ def main():
 
             # Asynchronously fetch results for all events
             print(f"Fetching results for all events in meet {meet_number}...")
-            with ThreadPoolExecutor(max_workers=4) as executor:
+            with ThreadPoolExecutor(max_workers=30) as executor:
                 futures = {
                     executor.submit(
                         fetch_event_results,
                         event['meet_number'],
                         event['event_number'],
                         event['event_type'],
+                        event['label'],
+                        meet_name,
                     ): event for event in events
                 }
 
@@ -74,15 +81,24 @@ def main():
 
             # Save to CSV
             if all_results:
-                csv_filename = f"scraper_results/{meet_number}.csv"
-                keys = all_results[0].keys()
+                csv_path = Path("scraper_results") / f"{meet_number}.csv"
+                csv_path.parent.mkdir(parents=True, exist_ok=True)
+                fieldnames = ["meet_name", "event_name", "athlete_name", "team", "place", "score"]
 
-                print(f"\nSaving {len(all_results)} result(s) to {csv_filename}...")
-                with open(csv_filename, 'w', newline='', encoding='utf-8') as f:
-                    writer = csv.DictWriter(f, fieldnames=keys)
+                print(f"\nSaving {len(all_results)} result(s) to {csv_path}...")
+                with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
                     writer.writeheader()
-                    writer.writerows(all_results)
-                print(f"Saved to {csv_filename}")
+                    for row in all_results:
+                        writer.writerow({
+                            "meet_name": row.get("meet_name", ""),
+                            "event_name": row.get("event_name", ""),
+                            "athlete_name": row.get("athlete_name", ""),
+                            "team": row.get("team", ""),
+                            "place": row.get("place", ""),
+                            "score": row.get("score", ""),
+                        })
+                print(f"Saved to {csv_path}")
             else:
                 print(f"No results collected for meet {meet_number}")
 
